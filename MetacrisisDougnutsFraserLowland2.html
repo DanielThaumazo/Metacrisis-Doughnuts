@@ -1,0 +1,618 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Doughnut Economics - Improved Charts</title>
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <style>
+	body {
+	  font-family: sans-serif;
+	  background: #f9f9f9;
+	  margin: 0;
+	  padding: 20px;
+	  display: flex;
+	  flex-direction: row;
+	  height: 100vh;              /* Key addition: Fix height to viewport */
+	  overflow: hidden;           /* Prevent body scroll */
+	}
+
+	.chart-grid {
+	  display: grid;
+	  grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+	  gap: 40px;
+	  justify-content: center;
+	  flex: 3;
+	  overflow-y: auto;           /* Allow only the chart-grid to scroll */
+	  height: 100%;               /* Full height of the container */
+	  padding-right: 10px;        /* Avoid clipping on scrollbar */
+	}
+
+	.info-panel {
+	  flex: 1;
+	  margin-left: 30px;
+	  background: #fff;
+	  border-radius: 8px;
+	  padding: 20px;
+	  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+	  max-height: 90vh;
+	  overflow-y: auto;
+	  position: sticky;           /* Key addition */
+	  top: 20px;                  /* Distance from top */
+	  align-self: flex-start;
+	}  
+    .chart-container {
+      position: relative;
+      background: white;
+      border-radius: 8px;
+      padding: 10px;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+    }
+    .tooltip {
+      position: absolute;
+      background: rgba(255, 255, 255, 0.95);
+      padding: 10px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      pointer-events: none;
+      font-size: 12px;
+      max-width: 300px;
+      opacity: 0;
+      z-index: 999;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    }
+    h3 {
+      text-align: center;
+      margin-bottom: 10px;
+    }
+    text.label {
+      font-size: 11px;
+      text-anchor: middle;
+      pointer-events: none;
+      fill: #333; 
+    }
+    .info-panel h2 {
+      font-size: 18px;
+      margin-top: 0;
+    }
+  </style>
+</head>
+<body>
+
+<!-- Chart holders -->
+  <div class="chart-grid">
+    <div id="extinctionEdge" class="chart-container"></div>
+    <div id="fragileWeb" class="chart-container"></div>
+    <div id="truthTornado" class="chart-container"></div>
+    <div id="soulSplit" class="chart-container"></div>
+    <div id="earthErosion" class="chart-container"></div>
+    <div id="powerPyramid" class="chart-container"></div>
+    <div id="techTsunami" class="chart-container"></div>
+    <div id="leadershipLapse" class="chart-container"></div>
+  </div>
+  <div class="info-panel" id="infoPanel">
+    <div id="infoContent">Click a segment to explore related insights.</div>
+  </div>
+
+   <script>
+    function humanizeTitle(id) {
+      return id.replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase());
+    }
+
+		function adjustLabelPositions(labels, offset = 18) {
+		  const yPositions = {};
+
+		  labels.each(function() {
+			const label = d3.select(this);
+			let y = parseFloat(label.attr("y"));
+
+			while (yPositions[y]) {
+			  y += offset; // Shift down by the offset
+			}
+
+			label.attr("y", y);
+			yPositions[y] = true;
+		  });
+		}
+
+    function drawDonutChart(containerId, info, innerRing, outerRing, options = {}) {
+      const width = options.width || 500;
+      const height = options.height || 500;
+      const baselineRadius = options.radius || 160;
+      const ringWidth = options.ringWidth || 50;
+      const container = d3.select(`#${containerId}`);
+
+      container.html("");
+      container.append("h3").text(humanizeTitle(containerId));
+
+      const svg = container.append("svg")
+        .attr("width", width)
+        .attr("height", height)
+        .append("g")
+        .attr("transform", `translate(${width / 2}, ${height / 2})`);
+
+      const tooltip = container.append("div")
+        .attr("class", "tooltip");
+
+      const pie = d3.pie().value(1).sort(null);
+
+      const arcInner = d3.arc()
+        .innerRadius(d => baselineRadius - ringWidth * (d.data.value / 100))
+        .outerRadius(baselineRadius);
+
+      const arcOuter = d3.arc()
+        .innerRadius(baselineRadius)
+        .outerRadius(d => baselineRadius + ringWidth * (d.data.value / 100));
+
+      const labelArcInner = d3.arc()
+        .innerRadius(baselineRadius - ringWidth - 10)
+        .outerRadius(baselineRadius - ringWidth - 10);
+
+      const labelArcOuter = d3.arc()
+        .innerRadius(baselineRadius + ringWidth + 10)
+        .outerRadius(baselineRadius + ringWidth + 10);
+
+		function showInfo(useInner, d) {
+			let content = "";
+			if (useInner) {
+			   content = `
+				<h2>${info[0].opposite}</h2>
+				<p><img width = "320" height = "320" src = "${info[0].oppositeImg}"><br>
+				<p>${info[0].oppositeDescription}<br>
+				<p><strong>${d.data.name}</strong><br>
+				Value: ${d.data.value}%<br>
+				<em>${d.data.text}</em></p>
+				<p><strong>People/Projects/Organizations:</strong><br>${d.data.related || "(no info available yet)"}</p>
+			  `;
+			} else {
+			  content = `
+				<h2>${info[0].facet}</h2>
+				<p><img width = "320" height = "320" src = "${info[0].facetImg}"><br>
+				<p>${info[0].facetDescription}<br>
+				<p><strong>${d.data.name}</strong><br>
+				Value: ${d.data.value}%<br>
+				<em>${d.data.text}</em></p>
+				<p><strong>People/Projects/Organizations:</strong><br>${d.data.related || "(no info available yet)"}</p>
+			  `;
+			}
+		  document.getElementById("infoContent").innerHTML = content;
+		}
+
+      svg.selectAll(".arc-inner")
+        .data(pie(innerRing))
+        .enter().append("g")
+        .attr("class", "arc-inner")
+        .append("path")
+        .attr("d", arcInner)
+        .attr("fill", d => d3.interpolateGreens(d.data.value / 100))
+        .attr("stroke", "#fff")
+//        .on("mouseover", function (event, d) {
+//          tooltip.transition().style("opacity", 1);
+//          tooltip.html(`<strong>${d.data.name}</strong><br>Value: ${d.data.value}%<br>${d.data.text}`);
+//        })
+//        .on("mousemove", function(event) {
+//          tooltip.style("left", (event.pageX + 10) + "px").style("top", (event.pageY - 20) + "px");
+//        })
+//        .on("mouseout", function () {
+//          tooltip.transition().style("opacity", 0);
+//        })
+        .on("click", function (event, d) {
+          showInfo(true, d);
+        });
+
+	// Draw inner labels
+	const innerLabels = svg.selectAll(".label-inner")
+	  .data(pie(innerRing))
+	  .enter().append("text")
+	  .attr("class", "label")
+	  .attr("transform", d => `translate(${labelArcInner.centroid(d)})`)
+	  .attr("dy", "0.35em")
+	  .attr("y", d => labelArcInner.centroid(d)[1])  // Set initial y position
+	  .text(d => d.data.name);
+	  
+      svg.selectAll(".arc-outer")
+        .data(pie(outerRing))
+        .enter().append("g")
+        .attr("class", "arc-outer")
+        .append("path")
+        .attr("d", arcOuter)
+        .attr("fill", d => d3.interpolateReds(d.data.value / 100))
+        .attr("stroke", "#fff")
+//        .on("mouseover", function (event, d) {
+//          tooltip.transition().style("opacity", 1);
+//          tooltip.html(`<strong>${d.data.name}</strong><br>Value: ${d.data.value}%<br>${d.data.text}`);
+//        })
+//        .on("mousemove", function(event) {
+//          tooltip.style("left", (event.pageX + 10) + "px").style("top", (event.pageY - 20) + "px");
+//        })
+//        .on("mouseout", function () {
+//          tooltip.transition().style("opacity", 0);
+//        })
+        .on("click", function (event, d) {
+          showInfo(false, d);
+        });
+
+      svg.selectAll(".label-outer")
+        .data(pie(outerRing))
+        .enter().append("text")
+        .attr("class", "label")
+        .attr("transform", d => `translate(${labelArcOuter.centroid(d)})`)
+        .attr("dy", "0.35em")
+        .text(d => d.data.name);
+		
+	// Draw outer labels
+	const outerLabels = svg.selectAll(".label-outer")
+	  .data(pie(outerRing))
+	  .enter().append("text")
+	  .attr("class", "label")
+	  .attr("transform", d => `translate(${labelArcOuter.centroid(d)})`)
+	  .attr("dy", "0.35em")
+	  .attr("y", d => labelArcOuter.centroid(d)[1])  // Set initial y position
+	  .text(d => d.data.name);
+
+	// Combine both inner and outer labels for overlap adjustment
+	const allLabels = innerLabels.merge(outerLabels);
+
+	// Adjust label positions to prevent overlap
+	adjustLabelPositions(allLabels, 18);		
+    }
+
+// === Main Data (Extinction Edge + Resilient Renaissance) ===
+const extinctionEdge = {
+  info: [
+    {
+	  facet: "Extinction Edge", 
+	  facetImg: "./img/1_ExtinctionEdge.png	",
+	  facetDescription: "These are threats that could lead to human extinction or permanently curtail humanity's potential. Examples include nuclear war, unchecked artificial intelligence, and catastrophic climate change. The existential risks are amplified by the interconnections between technology, environment, and global politics.", 
+	  opposite: "Resilient Renaissance",
+	  oppositeImg: "./img/01_ResilientRenaissance.png",
+	  oppositeDescription: "Humanity’s future is safeguarded by robust, adaptive systems capable of absorbing shocks from technological advancements, environmental changes, and political tensions. Through collaboration across science, ethics, and governance, we create frameworks for responsible innovation, sustainable ecosystems, and peace-building, ensuring long-term human flourishing and the full realization of our potential."
+	}
+  ],
+  
+  inner: 
+[
+  {
+    name: "Bioregional Governance",
+    value: 46,
+    text: "Efforts to establish bioregional governance in the Fraser Lowland are gaining momentum, particularly through collaborations between municipalities and First Nations. Initiatives like the Fraser Basin Council aim to harmonize land-use planning across jurisdictions, addressing challenges such as climate change, biodiversity loss, and sustainable development. However, jurisdictional fragmentation remains a significant hurdle, impeding coherent responses to existential risks. Strengthening these partnerships and developing shared long-term visions are crucial for effective bioregional governance."
+  },
+  {
+    name: "Cascadia Resilience Networks",
+    value: 52,
+    text: "Cross-border collaborations among British Columbia, Washington, and Oregon are enhancing regional resilience, especially concerning wildfires, earthquakes, and floods. Programs like the Cascadia Innovation Corridor facilitate mutual aid, data sharing, and joint scenario planning. Despite these advancements, resource gaps and fragmented systems persist. Investing in integrated emergency management frameworks and fostering community-based resilience initiatives are key to bolstering the region's preparedness."
+  },
+  {
+    name: "Climate Adaptation Infrastructure",
+    value: 44,
+    text: "The Fraser Lowland faces escalating threats from sea-level rise, wildfires, and atmospheric rivers. Infrastructure projects, including dike upgrades and the development of ecological buffers, have commenced to mitigate these risks. However, funding constraints and coordination challenges hinder progress. Comprehensive climate adaptation strategies that integrate traditional ecological knowledge and prioritize vulnerable communities are essential to enhance the region's resilience."
+  },
+  {
+    name: "Public Science Engagement",
+    value: 48,
+    text: "Institutions like the University of British Columbia (UBC) and Simon Fraser University (SFU) are actively engaging in climate modeling and scenario planning. Yet, public participation in these scientific endeavors remains limited. Initiatives such as citizen science programs and community workshops can democratize foresight tools, embedding long-term resilience thinking into civic life and empowering residents to contribute to sustainable solutions."
+  },
+  {
+    name: "Wildlife Corridor Restoration",
+    value: 40,
+    text: "Local champions are leading efforts to restore salmon streams and terrestrial migration routes in the Fraser Lowland. Projects like the Lower Fraser Fisheries Alliance focus on reconnecting fragmented habitats to support biodiversity. However, these initiatives often operate in isolation. Developing a coordinated bioregional vision for wildlife corridors, supported by consistent funding and policy alignment, would amplify their impact and contribute to ecological resilience."
+  },
+  {
+    name: "Emergency Preparedness Equity",
+    value: 39,
+    text: "Emergency preparedness initiatives in the Fraser Lowland frequently overlook unhoused and marginalized populations. Inclusive strategies, such as equitable evacuation plans, distributed emergency hubs, and mobile care infrastructure, are vital to ensure that all community members are protected during crises. Collaborations between government agencies, non-profits, and community organizations can foster more equitable and effective emergency responses."
+  },
+  {
+    name: "Intercultural Resilience Building",
+    value: 45,
+    text: "Integrating Indigenous knowledge with settler science is increasingly recognized as a valuable approach to disaster planning in the Fraser Lowland. Programs that promote intercultural dialogue and co-leadership, such as the Indigenous Climate Action initiative, are essential for developing regenerative resilience strategies. Building deeper trust and equitable power-sharing arrangements will enhance the effectiveness of these collaborative efforts."
+  },
+  {
+    name: "Peace-Oriented Collaboration",
+    value: 41,
+    text: "Despite rising social tensions, the Fraser Lowland maintains a strong ethos of cooperation. Community-led initiatives focus on peacebuilding and conflict resolution, fostering social cohesion. However, the presence of militarized policing, particularly in urban centers, can undermine these efforts. Emphasizing community-based approaches to crisis response and investing in restorative justice programs can strengthen peace-oriented collaboration in the region."
+  }
+]
+,
+  outer: [
+  {
+    name: "Megaquake Vulnerability",
+    value: 91,
+    text: "The Cascadia Subduction Zone poses a significant earthquake risk to the Fraser Lowland. A major seismic event could lead to widespread infrastructure damage and long-term regional disruption. Current emergency response systems and infrastructure are underprepared for such a scenario. Enhancing seismic resilience through updated building codes, public education campaigns, and cross-border emergency coordination is imperative to mitigate the potential impacts."
+  },
+  {
+    name: "Floodplain Fragility",
+    value: 85,
+    text: "Atmospheric rivers and snowmelt increasingly threaten to overwhelm dikes in the Fraser Valley. Climate change exacerbates these risks, leaving many floodplain communities vulnerable. Comprehensive flood management strategies, including the reinforcement of existing infrastructure and the restoration of natural floodplains, are essential. Collaborative planning among local governments, Indigenous communities, and stakeholders can enhance the region's capacity to withstand flooding events."
+  },
+  {
+    name: "Wildfire-Urban Interface Risk",
+    value: 77,
+    text: "The proximity of the Fraser Lowland to heavily forested regions heightens the risk of wildfires encroaching upon urban areas. Increasingly intense wildfire seasons threaten dense population zones, particularly during the summer months. Implementing fire-smart land-use planning, community education programs, and investment in firefighting resources are critical steps to reduce the wildfire-urban interface risk."
+  },
+  {
+    name: "Invasive Pathogen Spread",
+    value: 72,
+    text: "Agricultural and ecological systems in the Fraser Lowland are susceptible to invasive pathogens, such as avian flu in poultry and sudden oak death in forests. Climate change facilitates the spread of these diseases, while monitoring and rapid response capabilities remain limited. Strengthening biosecurity measures, investing in research, and enhancing inter-agency coordination are necessary to manage and mitigate the spread of invasive pathogens."
+  },
+  {
+    name: "Critical Infrastructure Interdependence",
+    value: 81,
+    text: "The Fraser Lowland's critical infrastructure—encompassing power, water, telecommunications, and logistics—is highly centralized and interdependent. A disruption in one system, whether due to natural disasters or cyberattacks, could rapidly cascade across others. Developing decentralized infrastructure models, conducting vulnerability assessments, and establishing robust contingency plans are essential to enhance systemic resilience."
+  },
+  {
+    name: "Runaway Urban Expansion",
+    value: 79,
+    text: "Ongoing urban sprawl into ecologically sensitive areas and agricultural zones in the Fraser Lowland undermines long-term resilience. This expansion threatens food systems, water cycles, and biodiversity. Implementing smart growth strategies, enforcing land-use regulations, and promoting sustainable urban development can help balance growth with ecological preservation."
+  },
+  {
+    name: "Nuclear Fallout Risk (Hanford Proximity)",
+    value: 61,
+    text: "The Fraser Lowland lies downwind of the Hanford nuclear site in Washington State. Although a containment breach is considered unlikely, the potential cross-border implications necessitate vigilance. Establishing emergency response protocols, engaging in international cooperation, and conducting regular risk assessments are prudent measures to address this latent threat."
+  },
+  {
+    name: "Climate Tipping Cascade",
+    value: 83,
+    text: "The Fraser Lowland faces the risk of a climate tipping cascade, where interconnected environmental changes—such as shrinking snowpack, ocean acidification, and boreal biome destabilization—could lead to irreversible ecological collapse. Proactive measures, including aggressive emission reductions, ecosystem restoration, and adaptive management strategies, are critical to prevent crossing these tipping points."
+  }
+]
+
+};
+
+const fragileWeb = {
+  info: [
+    {
+	  facet: "Fragile Web", 
+	  facetImg: "./img/2_FragileWeb.png	",
+	  facetDescription: "This facet involves the inherent vulnerabilities in our global systems—economic, political, environmental, and technological. As these systems become more interconnected, they also become more susceptible to cascading failures, where a disruption in one area can trigger a chain reaction of crises across multiple domains.", 
+	  opposite: "Interwoven Harmony",
+	  oppositeImg: "./img/02_InterwovenHarmony.png",
+	  oppositeDescription: "A resilient global network of systems—economic, political, environmental, and technological—where interdependencies foster cooperation, mutual support, and adaptability. This harmonious interconnection creates a world where local disruptions are mitigated, and cascading failures are prevented by strong, decentralized solutions and proactive, agile governance."
+	}
+  ],
+
+  inner: [
+    { name: "Watershed-Based Planning", value: 52, text: "Efforts are underway to align planning with natural watershed boundaries—like the Fraser and Nooksack—but institutional coordination across jurisdictions remains inconsistent. A truly interwoven system would prioritize ecological logic over administrative lines." },
+    { name: "Community-Led Emergency Hubs", value: 49, text: "Grassroots emergency response hubs—like those in Vancouver and Abbotsford—are gaining traction, yet they often lack sustained funding and integration with official systems." },
+    { name: "Agroecological Buffer Zones", value: 45, text: "The interface between urban development and agricultural land is a key zone of fragility. Community-supported agriculture and Indigenous land stewardship offer scalable models to reinforce this buffer, but zoning and speculation pose barriers." },
+    { name: "Civic Resilience Literacy", value: 42, text: "Programs to enhance public understanding of systems interdependence—like climate, food, and energy—are emerging, especially in schools and community centers, but broad coverage is lacking." },
+    { name: "Integrated Mobility Systems", value: 46, text: "Efforts to connect public transit, cycling, and intercity travel have improved, yet car dependency remains high. A shift to low-carbon, accessible transit systems would boost both equity and resilience." },
+    { name: "Decentralized Renewable Energy", value: 50, text: "Solar co-ops and microgrids are gaining ground, especially in First Nations communities and eco-villages, but regulatory and grid constraints still hinder widespread deployment." },
+    { name: "Cross-Border Collaboration", value: 40, text: "Fraser Lowland resilience depends on coordination with Washington State, yet data, policy, and disaster planning remain siloed across the border." },
+    { name: "Ecosystem Service Valuation", value: 44, text: "Recognition of wetlands, forests, and floodplains as vital services is increasing, but economic frameworks still undervalue them. Embedding natural capital into planning processes is key to long-term stability." }
+  ],
+  outer: [
+    { name: "Supply Chain Bottlenecks", value: 84, text: "Port of Vancouver and regional rail/highway systems are vulnerable to landslides, floods, and labor disruptions—creating ripple effects throughout Canada." },
+    { name: "Agricultural Dependence on Petrochemicals", value: 78, text: "Fraser Valley agriculture relies heavily on fossil fuels for fertilizer, transport, and production. This creates systemic fragility amid price volatility and ecological constraints." },
+    { name: "Overstressed Drainage and Pump Infrastructure", value: 76, text: "Aging drainage infrastructure—especially in flood-prone zones like Sumas Prairie—struggles to keep up with extreme weather events." },
+    { name: "Food System Centralization", value: 80, text: "Consolidated food distribution centers and processing plants create chokepoints. Localized food systems are growing but still marginal." },
+    { name: "Cross-Border Water Disputes", value: 69, text: "Shared aquifers and rivers—like the Nooksack and Columbia—face competing agricultural, urban, and ecological demands with no unified governance structure." },
+    { name: "Cyber-Attack Vulnerabilities", value: 72, text: "Local utilities and logistics networks are increasingly targeted by cyber threats, yet cybersecurity resources remain uneven." },
+    { name: "Social Trust Erosion", value: 75, text: "Disinformation and political polarization reduce the effectiveness of coordinated responses to crises—from vaccinations to evacuation orders." },
+    { name: "Zoning Inflexibility", value: 70, text: "Land use regulations are often too rigid to respond to emerging needs—like temporary housing, food hubs, or firebreaks—hampering rapid adaptation." }
+  ]
+};
+
+
+const truthTornado = {
+  info: [
+    {
+	  facet: "Truth Tornado", 
+	  facetImg: "./img/3_TruthTornado.png	",
+	  facetDescription: "This refers to the breakdown of shared understanding and trust in knowledge systems. Misinformation, disinformation, the erosion of expertise, and the polarization of discourse contribute to this crisis, making it difficult for societies to agree on facts or to make collective decisions.", 
+	  opposite: "Shared Light",
+	  oppositeImg: "./img/03_SharedLight.png",
+	  oppositeDescription: "A deeply interconnected and trustworthy knowledge ecosystem that transcends ideological divides and fosters collective wisdom. Through a culture of open inquiry, shared learning, and diverse yet respectful discourse, societies cultivate a shared understanding rooted in transparency, verified knowledge, and mutual respect. Communities can agree on facts and engage in productive debate, leading to informed, collective decision-making."
+	}
+  ],
+
+  inner: [
+    { name: "Community Media Networks", value: 47, text: "Local initiatives like Fraser Valley Current and community radio stations are helping rebuild trust in journalism, yet they lack reach and sustainability. Investing in trusted, multilingual, and culturally relevant media is essential." },
+    { name: "Land-Based Knowledge Sharing", value: 52, text: "Indigenous knowledge keepers and farmers are increasingly sharing climate, ecological, and seasonal insights. These practices deepen shared understanding rooted in place." },
+    { name: "Youth Media Literacy Programs", value: 44, text: "Efforts to teach critical media skills in schools and youth organizations are expanding, but often lack long-term funding and integration with online platforms." },
+    { name: "Cross-Cultural Dialogue Circles", value: 42, text: "Facilitated spaces for dialogue across political, generational, and cultural divides—often led by faith groups or civic societies—help mend social fabric and deepen epistemic humility." },
+    { name: "Open Science Initiatives", value: 48, text: "UBC, SFU, and community groups have pushed for open data access and participatory research. Citizen science projects (e.g., salmon monitoring) build transparency and co-ownership of knowledge." },
+    { name: "Libraries as Civic Anchors", value: 45, text: "Libraries across the region act as trusted institutions for learning, access, and intergenerational exchange. Their role in truth-building is often underutilized in resilience strategies." },
+    { name: "Decolonial Education Pathways", value: 46, text: "Alternative learning programs rooted in Indigenous pedagogy or unschooling offer holistic, place-based ways of knowing—bridging gaps between formal and lived knowledge." },
+    { name: "Digital Commons Stewardship", value: 40, text: "Open-source data platforms and federated social media pilots exist, but most residents rely on algorithmic feeds controlled by corporations. A regional digital commons strategy is needed." }
+  ],
+  outer: [
+    { name: "Platform Algorithmic Distortion", value: 88, text: "Fraser Lowland residents, like elsewhere, rely on social media dominated by outrage-driven algorithms that polarize and misinform." },
+    { name: "Colonial Epistemologies", value: 82, text: "Western technocratic models still dominate decision-making and education, sidelining Indigenous and experiential knowledge systems." },
+    { name: "Science–Policy Misalignment", value: 77, text: "Scientific consensus on climate, land use, and biodiversity often fails to translate into timely policy, due to bureaucratic inertia or political pushback." },
+    { name: "Disinformation Campaigns", value: 75, text: "Online disinformation about climate policy, migration, and public health impacts social cohesion and undermines democratic debate." },
+    { name: "Crisis Fatigue", value: 70, text: "Rapid cycles of news and disaster messaging desensitize the public, creating apathy and disengagement from fact-based action." },
+    { name: "Opaque Institutional Decisions", value: 68, text: "Major development or resource decisions are often made behind closed doors or with limited public input, eroding trust." },
+    { name: "Erosion of Local Journalism", value: 79, text: "Newsroom closures and media consolidation have gutted local investigative capacity. Community watchdogs are stretched thin." },
+    { name: "AI-Generated Misinformation", value: 65, text: "Deepfakes and synthetic media are emerging concerns in local election integrity and community reputation attacks." }
+  ]
+};
+
+
+const soulSplit = {
+  info: [
+    {
+	  facet: "Soul Split", 
+	  facetImg: "./img/4_SoulSplit.png	",
+	  facetDescription: "This facet involves the fragmentation of cultural narratives and identities, leading to a loss of meaning, purpose, and connection among individuals and communities. The increase in mental health issues, social isolation, and the decline of community bonds are in part symptomatic of this broader cultural and psychological unraveling.", 
+	  opposite: "Cultural Wholeness",
+	  oppositeImg: "./img/04_CulturalWholeness.png",
+	  oppositeDescription: "A flourishing of diverse, inclusive cultural narratives that inspire purpose, meaning, and connection across individuals and communities. Reunited with a sense of belonging and shared values, people form strong bonds of community, while embracing both global perspectives and local traditions. A deep sense of psychological well-being and cultural continuity fosters resilience in the face of personal and collective challenges."
+	}
+  ],
+
+  inner: [
+    { name: "Land-Based Healing", value: 54, text: "Programs that reconnect people to land—through forest therapy, community gardens, and Indigenous-led retreats—support emotional regulation, relational depth, and cultural renewal." },
+    { name: "Intergenerational Storytelling", value: 49, text: "Elders and youth circles, digital archives, and oral history projects foster continuity and identity across generations, especially in diasporic and Indigenous communities." },
+    { name: "Co-Creation of Culture", value: 60, text: "Festivals, art collectives, and neighborhood music events celebrate diversity and joy. These grassroots expressions strengthen communal bonds and shared meaning." },
+    { name: "Restorative Justice Circles", value: 46, text: "Schools and communities are increasingly adopting Indigenous-informed approaches to repair harm, resolve conflict, and build deeper relationships through dialogue." },
+    { name: "Cultural Literacy in Schools", value: 44, text: "Some schools are embedding local Indigenous history, language, and place-based knowledge into curricula, but systemic adoption remains slow and uneven." },
+    { name: "Ritual and Ceremony Revitalization", value: 42, text: "Seasonal, ancestral, and Earth-honoring rituals are being reclaimed by communities across traditions as anchors of identity and meaning." },
+    { name: "Social Prescribing Pilots", value: 40, text: "Some health providers are testing 'prescriptions' for cultural participation—like joining choirs, art groups, or nature clubs—to support mental and emotional well-being." },
+    { name: "Civic Culture Design", value: 48, text: "Libraries, parks, and public spaces are being redesigned to foster belonging through participatory art, accessible gathering areas, and community decision-making." }
+  ],
+  outer: [
+    { name: "Widespread Social Isolation", value: 85, text: "Urban sprawl, car dependency, and digital substitution for in-person interaction contribute to loneliness and disconnectedness." },
+    { name: "Mental Health Emergency", value: 81, text: "Fraser Health reports high levels of anxiety, depression, and burnout—especially among youth, frontline workers, and racialized populations." },
+    { name: "Cultural Erosion", value: 75, text: "Settler-colonial development continues to displace sacred sites, languages, and traditional practices—especially among Indigenous peoples." },
+    { name: "Fragmented Identities", value: 78, text: "Social media, polarization, and identity politics foster reactive rather than integrated identities—often separating people from place, history, and community." },
+    { name: "Disenchantment and Despair", value: 70, text: "Economic precarity, climate dread, and lack of spiritual frameworks leave many youth feeling unanchored and hopeless." },
+    { name: "Loss of Communal Rituals", value: 73, text: "Public rituals—birth, death, celebration, mourning—are increasingly privatized or commercialized, weakening cultural cohesion." },
+    { name: "Hyperindividualism", value: 76, text: "Cultural norms focused on personal achievement and competition erode collective responsibility and shared values." },
+    { name: "Age Segregation", value: 67, text: "Institutional and social design separates elders from youth, weakening mutual care and wisdom transfer." }
+  ]
+};
+
+
+const earthErosion = {
+  info: [
+    {
+	  facet: "Earth Erosion", 
+	  facetImg: "./img/5_EarthErosion.png	",
+	  facetDescription: "The ecological aspect of the metacrisis includes environmental degradation, biodiversity loss, and climate change. These issues destabilize the natural systems upon which all life depends. The ecological crisis is exacerbated by human activities that disrupt the planet's ecosystems at a global scale.", 
+	  opposite: "Regenerative Abundance",
+	  oppositeImg: "./img/05_RegenerativeAbundance.png",
+	  oppositeDescription: "Human activity is in harmony with the Earth’s natural systems, fostering ecosystems that not only sustain but regenerate life. Biodiversity thrives, climate change is mitigated through equitable, ecological practices, and humanity becomes stewards of a flourishing planet. Regenerative agriculture, circular economies, and localized ecological governance ensure that nature and society flourish together."
+	}
+  ],
+
+  inner: [
+    { name: "Wetland Restoration", value: 60, text: "Projects like the Serpentine Fen and Burns Bog restoration are critical to carbon sequestration, flood control, and biodiversity—but need more funding and long-term stewardship frameworks." },
+    { name: "Agroecology and Food Sovereignty", value: 54, text: "Regenerative farming, seed saving, and Indigenous foodways are gaining traction in places like Chilliwack and Agassiz. Scaling this requires land access and support for small producers." },
+    { name: "Watershed Co-Governance", value: 50, text: "Collaborative stewardship models involving First Nations, municipalities, and farmers (e.g., Cowichan, Fraser Basin Council) are emerging but remain fragmented and under-resourced." },
+    { name: "Urban Greening and Pollinator Corridors", value: 47, text: "Efforts to increase tree cover, rooftop gardens, and pollinator habitats exist, but need strategic integration across municipal planning zones and new developments." },
+    { name: "Climate Literacy in Schools", value: 43, text: "Some districts are embedding climate resilience into curriculum, especially via outdoor learning, but systemic change is slow and teacher training uneven." },
+    { name: "Biocultural Mapping", value: 41, text: "Collaborative projects mapping cultural and ecological values—like sacred sites, salmon runs, and community gardens—build shared knowledge and planning capacity." },
+    { name: "Circular Economy Pilots", value: 46, text: "Material reuse and local repair ecosystems are emerging (e.g., tool libraries, community fridges), but require regional coordination and market shifts." },
+    { name: "Youth Climate Organizing", value: 55, text: "Fraser Lowland youth are leading climate strikes, policy advocacy, and art-based awareness efforts. They need greater institutional support and cross-sector partnerships." }
+  ],
+  outer: [
+    { name: "Biodiversity Decline", value: 89, text: "Habitat loss, pollution, and invasive species threaten salmon, pollinators, and native plants in the Fraser Delta and surrounding ecosystems." },
+    { name: "Soil Degradation", value: 80, text: "Intensive monoculture, agrochemical use, and topsoil erosion are undermining long-term food security across the region’s agricultural zones." },
+    { name: "Water Stress and Pollution", value: 82, text: "Over-extraction, agricultural runoff, and aging infrastructure contribute to declining water quality and flow reliability in key rivers and aquifers." },
+    { name: "Climate-Driven Disasters", value: 88, text: "Atmospheric rivers, heat domes, and wildfire smoke are increasing in frequency and intensity, with compounding impacts across health, economy, and ecosystems." },
+    { name: "Coastal and Floodplain Vulnerability", value: 77, text: "Sea level rise, dike failures, and uncoordinated land use planning leave communities highly exposed to floods and habitat disruption." },
+    { name: "Urban Sprawl", value: 76, text: "Low-density development and habitat fragmentation are rapidly consuming arable land, wetlands, and forests." },
+    { name: "Waste and Consumption Patterns", value: 73, text: "High levels of single-use materials, e-waste, and fast fashion persist despite recycling efforts. Many circular systems remain peripheral." },
+    { name: "Fragmented Ecological Governance", value: 70, text: "Disjointed jurisdiction over land, water, and species hinders integrated ecological restoration and long-term planning." }
+  ]
+};
+
+
+const powerPyramid = {
+  info: [
+    {
+	  facet: "Power Pyramid", 
+	  facetImg: "./img/6_PowerPyramid.png	",
+	  facetDescription: "Growing inequality, both within and between countries, is another critical element of the metacrisis. The concentration of wealth and power in the hands of a few, coupled with the disenfranchisement of large populations, fuels social unrest, destabilizes political systems, and hinders collective action to address global challenges.", 
+	  opposite: "Equitable Commons",
+	  oppositeImg: "./img/06_EquitableCommons.png",
+	  oppositeDescription: "A just and equitable global system where power and resources are distributed in a way that fosters opportunity, fairness, and dignity for all. Communities practice economic, social, and political inclusivity, and policies are designed to diminish inequalities while empowering disenfranchised populations. Cooperative governance and shared wealth systems ensure that all have a voice and stake in our collective future."
+	}
+  ],
+
+  inner: [
+    { name: "Community Land Trusts", value: 52, text: "Land trusts in areas like Vancouver and Mission are helping to protect housing affordability and prevent displacement, but face major hurdles in land acquisition and policy alignment." },
+    { name: "Participatory Budgeting Pilots", value: 44, text: "Municipal experiments with participatory budgeting are growing in interest, yet few have decision-making power over significant funds or involve marginalized communities meaningfully." },
+    { name: "Cooperative Enterprise", value: 47, text: "Worker co-ops, Indigenous-owned businesses, and community-supported enterprises are advancing economic democracy, especially in food, arts, and housing sectors." },
+    { name: "Mutual Aid Networks", value: 60, text: "Grassroots aid networks—especially active during floods, COVID, and the heat dome—demonstrate strong capacity for care outside institutional structures." },
+    { name: "Free and Open Digital Tools", value: 41, text: "Open-source civic tech and mesh networks are being explored to reduce reliance on centralized platforms and expand digital sovereignty." },
+    { name: "Universal Basic Services Advocacy", value: 46, text: "Movements for guaranteed housing, transit, and internet access are advancing, but policy traction remains limited by budget and ideological barriers." },
+    { name: "Youth Organizing and Civic Education", value: 50, text: "Youth councils, school clubs, and peer-led civic education efforts are building political literacy, but need infrastructure and adult allyship to scale." },
+    { name: "Reparative Policy Development", value: 43, text: "Some local initiatives are addressing past injustices—e.g., land acknowledgments, housing reparations—but few include structural redistribution of land or wealth." }
+  ],
+  outer: [
+    { name: "Wealth Inequality", value: 90, text: "The cost of living crisis, inflated housing market, and wage stagnation have widened the gap between affluent homeowners and precarious renters or unhoused populations." },
+    { name: "Colonial Land Tenure Systems", value: 88, text: "Crown land regimes and private property models exclude Indigenous governance and community stewardship in large swaths of the Fraser region." },
+    { name: "Corporate Concentration", value: 82, text: "Agribusiness, telecom, and real estate sectors are dominated by a few large players, undermining local resilience and democratic ownership." },
+    { name: "Political Disenfranchisement", value: 76, text: "Many migrant, Indigenous, and youth voices remain underrepresented in governance structures and policy forums, perpetuating systemic exclusion." },
+    { name: "Exploitative Labor Practices", value: 78, text: "Migrant agricultural workers, care providers, and gig workers face unsafe conditions, low wages, and lack of legal protection." },
+    { name: "Tax Avoidance and Capital Flight", value: 74, text: "High-net-worth individuals and corporations use loopholes and offshore vehicles, draining public revenue that could support common goods." },
+    { name: "Extractive Development Models", value: 79, text: "Speculative real estate, resource extraction, and mega-projects often prioritize short-term gains over local needs and ecological balance." },
+    { name: "Inaccessible Legal and Bureaucratic Systems", value: 70, text: "Navigating permits, representation, or public consultations remains difficult for marginalized communities, reinforcing power imbalances." }
+  ]
+};
+
+
+const techTsunami = {
+  info: [
+    {
+	  facet: "Tech Tsunami", 
+	  facetImg: "./img/7_TechTsunami.png	",
+	  facetDescription: "Advances in technology, particularly in artificial intelligence, biotechnology, and digital surveillance, pose both opportunities and risks. The rapid pace of technological change outstrips the capacity of social, legal, and ethical systems to keep up, leading to unintended consequences and new forms of control and exploitation.", 
+	  opposite: "Tech Symphony",
+	  oppositeImg: "./img/07_TechSymphony.png",
+	  oppositeDescription: "A balanced and humane integration of technology into society, where AI, biotechnology, and digital innovations are designed and governed for the benefit of all. Technology enhances human potential while being guided by ethical principles, safeguarding privacy, and amplifying human agency. Innovations in health, education, and the environment serve the common good, promoting wellbeing, creativity, and autonomy."
+	}
+  ],
+
+  inner: [
+    { name: "Community Broadband & Mesh Networks", value: 48, text: "Several rural and Indigenous communities in the Fraser region are piloting mesh networks and local ISPs to ensure digital sovereignty and resilience, but require regulatory support and infrastructure investment." },
+    { name: "Open Data for the Public Good", value: 46, text: "Municipal open data platforms (e.g., Metro Vancouver, City of Surrey) offer public access to planning, transit, and environmental datasets—but usability and real community involvement remain limited." },
+    { name: "Decolonial and Inclusive Tech Design", value: 42, text: "Some initiatives are applying Indigenous design principles and accessibility standards to civic tech, though still peripheral to dominant design paradigms." },
+    { name: "Tech for Environmental Stewardship", value: 55, text: "AI, sensors, and satellite tools are increasingly used for ecosystem monitoring, salmon tracking, and flood modeling—especially via collaborations with Indigenous guardianship programs." },
+    { name: "Digital Literacy Hubs", value: 49, text: "Libraries, schools, and nonprofits offer training in coding, cybersecurity, and critical tech use. Expansion is needed for underserved populations, especially elders and newcomers." },
+    { name: "Open-Source Innovation Spaces", value: 51, text: "Makerspaces, repair cafés, and community hackathons are fostering grassroots tech development, though many remain fragile or underfunded." },
+    { name: "Youth-Led Tech for Change", value: 47, text: "Fraser youth are developing digital storytelling platforms, climate data tools, and civic engagement apps. Scaling these efforts requires mentorship, visibility, and seed funding." },
+    { name: "Ethical AI and Data Advocacy", value: 44, text: "Scholars and civil society actors are beginning to challenge biased algorithms, surveillance tools, and exploitative data practices—but public awareness is still nascent." }
+  ],
+  outer: [
+    { name: "Platform Monopolies", value: 84, text: "Tech giants dominate digital infrastructure, data storage, and communications, limiting local autonomy and enabling extraction of value from regional communities." },
+    { name: "Surveillance Infrastructure", value: 81, text: "Automated license plate readers, facial recognition pilots, and predictive policing tools have emerged with little oversight or community input." },
+    { name: "Digital Divide", value: 76, text: "Disparities in broadband access and device ownership persist, particularly in remote, low-income, and migrant communities." },
+    { name: "Algorithmic Bias and Harm", value: 78, text: "AI systems used in hiring, health triage, or content moderation often encode racial, gendered, or linguistic biases, reinforcing discrimination." },
+    { name: "Tech Displacement and Labor Insecurity", value: 72, text: "Automation in warehousing, logistics, and agriculture threatens jobs without guarantees of retraining or transition support." },
+    { name: "Digital Mental Health Impacts", value: 70, text: "Social media overuse, misinformation, and algorithmic manipulation exacerbate anxiety, depression, and polarization, especially among youth." },
+    { name: "Corporate Data Harvesting", value: 79, text: "Personal and community data are extracted for profit, with limited transparency or consent, undermining privacy and local control." },
+    { name: "Fragmented Tech Governance", value: 68, text: "Jurisdictional gaps between federal, provincial, and municipal bodies hinder coordinated oversight of emerging technologies." }
+  ]
+};
+
+
+const leadershipLapse = {
+  info: [
+    {
+	  facet: "Leadership Lapse", 
+	  facetImg: "./img/8_LeadershipLapse.png	",
+	  facetDescription: "Many of the world's governance systems are not equipped to handle the complexity of the metacrisis. These systems often operate in silos, are slow to adapt, and are prone to corruption, inefficiency, and short-term thinking. This governance deficit makes it difficult to coordinate global responses to interconnected crises.", 
+	  opposite: "Adaptive Stewardship",
+	  oppositeImg: "./img/08	_AdaptiveStewardship.png",
+	  oppositeDescription: "Dynamic, agile leadership systems rooted in wisdom, foresight, and long-term thinking guide global and local responses to challenges. Governance is transparent, responsive, and adaptive, with diverse leadership structures that prioritize collaboration and shared responsibility. Leaders act as stewards of complexity, working across silos and engaging citizens in a co-creative process to shape a thriving, interconnected world."
+	}
+  ],
+
+  inner: [
+    { name: "Bioregional Convening", value: 52, text: "Groups like Regenerate Cascadia and Fraser Lowland coalitions are fostering place-based leadership through gathering, story-sharing, and systems mapping—though wider public visibility is still emerging." },
+    { name: "Civic Co-Creation Platforms", value: 45, text: "Local participatory design processes—like Surrey’s youth policy design and Chilliwack’s climate forums—are showing promise but often lack follow-through and funding." },
+    { name: "Interjurisdictional Collaboration", value: 48, text: "Watershed-based initiatives like the Fraser Basin Council attempt to align local, provincial, and federal governance—but structural silos still dominate." },
+    { name: "Values-Based Leadership Programs", value: 50, text: "Some leadership incubators, including Indigenous mentorship circles and youth assemblies, are cultivating grounded, relational governance capacities." },
+    { name: "Crisis-Informed Learning Systems", value: 44, text: "Post-disaster assessments and after-action reviews (e.g., after 2021 floods) are unevenly documented and rarely institutionalized for learning across municipalities." },
+    { name: "Data-Informed Local Policy", value: 47, text: "Cities like New Westminster and Abbotsford are beginning to adopt adaptive policy tools that incorporate realtime climate data and public input." },
+    { name: "Public Sector Innovation Units", value: 43, text: "Vancouver’s CityStudio and other civic innovation labs experiment with adaptive, student-led projects—but most are marginal to core decision-making." },
+    { name: "Transparent Governance Experiments", value: 41, text: "Open council data, participatory dashboards, and livestreamed budget deliberations are emerging slowly, but many communities still lack access or trust." }
+  ],
+  outer: [
+    { name: "Short-Termism in Governance", value: 87, text: "Election cycles, grant structures, and media narratives push decisions toward short-term wins instead of long-term resilience and regeneration." },
+    { name: "Crisis Fatigue and Bureaucratic Paralysis", value: 81, text: "Back-to-back emergencies (fires, floods, housing) overwhelm institutional bandwidth, with many public bodies stuck in reactive or outdated modes." },
+    { name: "Siloed Government Structures", value: 84, text: "Departments and ministries still operate in disconnected ways, hindering integrated responses to overlapping ecological, housing, and public health crises." },
+    { name: "Public Disillusionment and Distrust", value: 78, text: "Frustration with perceived inaction, corruption, or consultation fatigue leads to low voter turnout and disengagement from formal systems." },
+    { name: "Underrepresentation of Indigenous Governance", value: 80, text: "Despite advances in recognition, Indigenous decision-making is still rarely integrated as equal or sovereign in regional governance frameworks." },
+    { name: "Leadership Pipeline Gaps", value: 70, text: "Few institutions are preparing emerging leaders with the complexity thinking, intercultural fluency, or systems literacy needed for today's challenges." },
+    { name: "Opaque Emergency Response", value: 75, text: "Floodplain evacuation, wildfire response, and public health mandates often lack clarity, transparency, or participatory feedback channels." },
+    { name: "Inertia in Institutional Culture", value: 72, text: "Risk-averse mindsets, rigid procedures, and lack of psychological safety prevent experimentation, adaptation, and course-correction in leadership systems." }
+  ]
+};
+
+drawDonutChart("extinctionEdge",	extinctionEdge.info,	extinctionEdge.inner, 	extinctionEdge.outer);
+drawDonutChart("fragileWeb", 		fragileWeb.info,		fragileWeb.inner, 		fragileWeb.outer);
+drawDonutChart("truthTornado", 		truthTornado.info,		truthTornado.inner, 	truthTornado.outer);
+drawDonutChart("soulSplit", 		soulSplit.info,			soulSplit.inner, 		soulSplit.outer);
+drawDonutChart("earthErosion", 		earthErosion.info,		earthErosion.inner, 	earthErosion.outer);
+drawDonutChart("powerPyramid", 		powerPyramid.info,		powerPyramid.inner, 	powerPyramid.outer);
+drawDonutChart("techTsunami", 		techTsunami.info,		techTsunami.inner, 		techTsunami.outer);
+drawDonutChart("leadershipLapse", 	leadershipLapse.info,		leadershipLapse.inner, 	leadershipLapse.outer);
+
+</script>
+
+</body>
+</html>
