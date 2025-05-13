@@ -10,8 +10,7 @@ export const extinctionEdge = {
 	}
   ],
   
-  inner: 
-[
+  inner: [
   {
     name: "Bioregional Governancez",
     value: 46,
@@ -25,7 +24,10 @@ export const extinctionEdge = {
   {
     name: "Climate Adaptation Infrastructure",
     value: 44,
-    text: "The Fraser Lowland faces escalating threats from sea-level rise, wildfires, and atmospheric rivers. Infrastructure projects, including dike upgrades and the development of ecological buffers, have commenced to mitigate these risks. However, funding constraints and coordination challenges hinder progress. Comprehensive climate adaptation strategies that integrate traditional ecological knowledge and prioritize vulnerable communities are essential to enhance the region's resilience."
+    text: "The Fraser Lowland faces escalating threats from sea-level rise, wildfires, and atmospheric rivers. Infrastructure projects, including dike upgrades and the development of ecological buffers, have commenced to mitigate these risks. However, funding constraints and coordination challenges hinder progress. Comprehensive climate adaptation strategies that integrate traditional ecological knowledge and prioritize vulnerable communities are essential to enhance the region's resilience.",
+    relatedPeople: ["person1", "person2"],
+    relatedProjects: ["project1", "project2"],
+    relatedOrganizations: ["org1", "org2"]
   },
   {
     name: "Public Science Engagement",
@@ -52,8 +54,8 @@ export const extinctionEdge = {
     value: 41,
     text: "Despite rising social tensions, the Fraser Lowland maintains a strong ethos of cooperation. Community-led initiatives focus on peacebuilding and conflict resolution, fostering social cohesion. However, the presence of militarized policing, particularly in urban centers, can undermine these efforts. Emphasizing community-based approaches to crisis response and investing in restorative justice programs can strengthen peace-oriented collaboration in the region."
   }
-]
-,
+ ],
+ 
   outer: [
   {
     name: "Megaquake Vulnerability",
@@ -95,6 +97,62 @@ export const extinctionEdge = {
     value: 83,
     text: "The Fraser Lowland faces the risk of a climate tipping cascade, where interconnected environmental changes—such as shrinking snowpack, ocean acidification, and boreal biome destabilization—could lead to irreversible ecological collapse. Proactive measures, including aggressive emission reductions, ecosystem restoration, and adaptive management strategies, are critical to prevent crossing these tipping points."
   }
-]
+],
 
+ people: [
+    {
+      id: "person1",
+      name: "Eliana Chia",
+      description: "Program Manager for Climate & Energy Resilience at the Fraser Basin Council, leading initiatives on climate adaptation and community resilience.",
+      url: "https://retooling.ca/about-us/",
+      relevance: "Oversees climate adaptation programs supporting infrastructure resilience in the Fraser Valley.",
+      location: { lat: 49.2827, lng: -123.1207 }
+    },
+    {
+      id: "person2",
+      name: "Troy Ganzeveld",
+      description: "Councilor for the Semá:th (Sumas) First Nation, advocating for the restoration of Sumas Lake to address historical injustices and enhance climate resilience.",
+      url: "https://news.mongabay.com/2024/08/climate-change-could-return-a-stolen-lake-to-indigenous-people-a-century-later/",
+      relevance: "Promotes nature-based solutions for flood mitigation and ecological restoration in the Fraser Lowland.",
+      location: { lat: 49.0500, lng: -122.3000 }
+    }
+  ],
+
+  projects: [
+    {
+      id: "project1",
+      name: "Fraser Valley Agricultural Water Supply Assessment & Action Plan",
+      description: "A comprehensive assessment identifying vulnerabilities in the agricultural water supply and proposing infrastructure-related projects to enhance resilience.",
+      url: "https://www.bcclimatechangeadaptation.ca/library/agricultural-water-supply-in-the-fraser-valley/",
+      relevance: "Addresses water scarcity and infrastructure needs in the face of climate change.",
+      location: { lat: 49.1044, lng: -122.8011 }
+    },
+    {
+      id: "project2",
+      name: "Fraser Valley Adaptation Strategies Plan",
+      description: "A strategic plan outlining actions to enhance the agricultural sector's ability to adapt to climate change, including infrastructure improvements.",
+      url: "https://www.bcclimatechangeadaptation.ca/library/fraser-valley-adaptation-strategies-plan/",
+      relevance: "Provides a roadmap for infrastructure adaptation to climate impacts in the Fraser Valley.",
+      location: { lat: 49.1044, lng: -122.8011 }
+    }
+  ],
+
+  organizations: [
+    {
+      id: "org1",
+      name: "Fraser Basin Council",
+      description: "A non-profit organization working to advance sustainability in the Fraser Basin and across British Columbia through collaborative initiatives.",
+      url: "https://www.fraserbasin.bc.ca/bc-wide-work/climate-change/climate-resilience/",
+      relevance: "Leads climate resilience projects, including infrastructure adaptation, in the Fraser Lowland.",
+      location: { lat: 49.2827, lng: -123.1207 }
+    },
+    {
+      id: "org2",
+      name: "Lower Fraser Fisheries Alliance",
+      description: "An alliance of First Nations working together to manage and protect fisheries resources in the Lower Fraser River.",
+      url: "https://climateadapt.lffamaps.ca/system/climate_adapt/Lower%20Fraser%20Climate%20Adaptation%20and%20Fish%20Habitat%20Restoration%20Strategy.pdf",
+      relevance: "Engages in climate adaptation projects focusing on habitat restoration and infrastructure resilience.",
+      location: { lat: 49.1044, lng: -122.8011 }
+    }
+  ]
 };

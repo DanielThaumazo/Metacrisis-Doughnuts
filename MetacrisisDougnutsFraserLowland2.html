@@ -1,284 +1,352 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Doughnut Economics - Improved Charts</title>
-  <script src="https://d3js.org/d3.v7.min.js"></script>
-  <style>
-	body {
-	  font-family: sans-serif;
-	  background: #f9f9f9;
-	  margin: 0;
-	  padding: 20px;
-	  display: flex;
-	  flex-direction: row;
-	  height: 100vh;              /* Key addition: Fix height to viewport */
-	  overflow: hidden;           /* Prevent body scroll */
-	}
+  <!DOCTYPE html>
+  <html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Doughnut Economics - Improved Charts</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+    body {
+      font-family: sans-serif;
+      background: #f9f9f9;
+      margin: 0;
+      padding: 20px;
+      display: flex;
+      flex-direction: row;
+      height: 100vh;              /* Key addition: Fix height to viewport */
+      overflow: hidden;           /* Prevent body scroll */
+    }
 
-	.chart-grid {
-	  display: grid;
-	  grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
-	  gap: 40px;
-	  justify-content: center;
-	  flex: 3;
-	  overflow-y: auto;           /* Allow only the chart-grid to scroll */
-	  height: 100%;               /* Full height of the container */
-	  padding-right: 10px;        /* Avoid clipping on scrollbar */
-	}
+    .chart-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+      gap: 40px;
+      justify-content: center;
+      flex: 3;
+      overflow-y: auto;           /* Allow only the chart-grid to scroll */
+      height: 100%;               /* Full height of the container */
+      padding-right: 10px;        /* Avoid clipping on scrollbar */
+    }
 
-	.info-panel {
-	  flex: 1;
-	  margin-left: 30px;
-	  background: #fff;
-	  border-radius: 8px;
-	  padding: 20px;
-	  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
-	  max-height: 90vh;
-	  overflow-y: auto;
-	  position: sticky;           /* Key addition */
-	  top: 20px;                  /* Distance from top */
-	  align-self: flex-start;
-	}  
-    .chart-container {
-      position: relative;
-      background: white;
+    .info-panel {
+      flex: 1;
+      margin-left: 30px;
+      background: #fff;
       border-radius: 8px;
-      padding: 10px;
+      padding: 20px;
       box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
-    }
-    .tooltip {
-      position: absolute;
-      background: rgba(255, 255, 255, 0.95);
-      padding: 10px;
-      border: 1px solid #ccc;
-      border-radius: 4px;
-      pointer-events: none;
-      font-size: 12px;
-      max-width: 300px;
-      opacity: 0;
-      z-index: 999;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
-    }
-    h3 {
-      text-align: center;
-      margin-bottom: 10px;
-    }
-    text.label {
-      font-size: 11px;
-      text-anchor: middle;
-      pointer-events: none;
-      fill: #333; 
-    }
-    .info-panel h2 {
-      font-size: 18px;
-      margin-top: 0;
-    }
-  </style>
-</head>
-<body>
+      max-height: 90vh;
+      overflow-y: auto;
+      position: sticky;           /* Key addition */
+      top: 20px;                  /* Distance from top */
+      align-self: flex-start;
+    }  
+      .chart-container {
+        position: relative;
+        background: white;
+        border-radius: 8px;
+        padding: 10px;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+      }
+      .tooltip {
+        position: absolute;
+        background: rgba(255, 255, 255, 0.95);
+        padding: 10px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        pointer-events: none;
+        font-size: 12px;
+        max-width: 300px;
+        opacity: 0;
+        z-index: 999;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+      }
+      h3 {
+        text-align: center;
+        margin-bottom: 10px;
+      }
+      text.label {
+        font-size: 11px;
+        text-anchor: middle;
+        pointer-events: none;
+        fill: #333; 
+      }
+      .info-panel h2 {
+        font-size: 18px;
+        margin-top: 0;
+      }
+    </style>
+  </head>
+  <body>
 
-<!-- Chart holders -->
-  <div class="chart-grid">
-    <div id="extinctionEdge" class="chart-container"></div>
-    <div id="fragileWeb" class="chart-container"></div>
-    <div id="truthTornado" class="chart-container"></div>
-    <div id="soulSplit" class="chart-container"></div>
-    <div id="earthErosion" class="chart-container"></div>
-    <div id="powerPyramid" class="chart-container"></div>
-    <div id="techTsunami" class="chart-container"></div>
-    <div id="leadershipLapse" class="chart-container"></div>
-  </div>
-  <div class="info-panel" id="infoPanel">
-    <div id="infoContent">Click a segment to explore related insights.</div>
-  </div>
+  <!-- Chart holders -->
+    <div class="chart-grid">
+      <div id="extinctionEdge" class="chart-container"></div>
+      <div id="fragileWeb" class="chart-container"></div>
+      <div id="truthTornado" class="chart-container"></div>
+      <div id="soulSplit" class="chart-container"></div>
+      <div id="earthErosion" class="chart-container"></div>
+      <div id="powerPyramid" class="chart-container"></div>
+      <div id="techTsunami" class="chart-container"></div>
+      <div id="leadershipLapse" class="chart-container"></div>
+    </div>
+    <div class="info-panel" id="infoPanel">
+      <div id="infoContent">Click a segment to explore related insights.</div>
+    </div>
 
-  <script type="module">
-    import { extinctionEdge } from './data/fraser_lowland/25_05_12/extinctionEdge.js';
-    import { fragileWeb} from './data/fraser_lowland/25_05_12/fragileWeb.js';
-    import { truthTornado } from './data/fraser_lowland/25_05_12/truthTornado.js';
-    import { soulSplit } from './data/fraser_lowland/25_05_12/soulSplit.js';
-    import { earthErosion } from './data/fraser_lowland/25_05_12/earthErosion.js';
-    import { powerPyramid } from './data/fraser_lowland/25_05_12/powerPyramid.js';
-    import { techTsunami } from './data/fraser_lowland/25_05_12/techTsunami.js';
-    import { leadershipLapse } from './data/fraser_lowland/25_05_12/leadershipLapse.js';
+    <script type="module">
+      import { extinctionEdge } from './data/fraser_lowland/25_05_12/extinctionEdge.js';
+      import { fragileWeb} from './data/fraser_lowland/25_05_12/fragileWeb.js';
+      import { truthTornado } from './data/fraser_lowland/25_05_12/truthTornado.js';
+      import { soulSplit } from './data/fraser_lowland/25_05_12/soulSplit.js';
+      import { earthErosion } from './data/fraser_lowland/25_05_12/earthErosion.js';
+      import { powerPyramid } from './data/fraser_lowland/25_05_12/powerPyramid.js';
+      import { techTsunami } from './data/fraser_lowland/25_05_12/techTsunami.js';
+      import { leadershipLapse } from './data/fraser_lowland/25_05_12/leadershipLapse.js';
 
 
-    function humanizeTitle(id) {
-      return id.replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase());
-    }
+      function humanizeTitle(id) {
+        return id.replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase());
+      }
 
-		function adjustLabelPositions(labels, offset = 18) {
-		  const yPositions = {};
+      function adjustLabelPositions(labels, offset = 18) {
+        const yPositions = {};
 
-		  labels.each(function() {
-			const label = d3.select(this);
-			let y = parseFloat(label.attr("y"));
+        labels.each(function() {
+        const label = d3.select(this);
+        let y = parseFloat(label.attr("y"));
 
-			while (yPositions[y]) {
-			  y += offset; // Shift down by the offset
-			}
+        while (yPositions[y]) {
+          y += offset; // Shift down by the offset
+        }
 
-			label.attr("y", y);
-			yPositions[y] = true;
-		  });
-		}
+        label.attr("y", y);
+        yPositions[y] = true;
+        });
+      }
 
-    function drawDonutChart(containerId, info, innerRing, outerRing, options = {}) {
-      const width = options.width || 500;
-      const height = options.height || 500;
-      const baselineRadius = options.radius || 160;
-      const ringWidth = options.ringWidth || 50;
-      const container = d3.select(`#${containerId}`);
+      function drawDonutChart(containerId, info, innerRing, outerRing, people, projects, organizations, options = {}) {
+        const width = options.width || 500;
+        const height = options.height || 500;
+        const baselineRadius = options.radius || 160;
+        const ringWidth = options.ringWidth || 50;
+        const container = d3.select(`#${containerId}`);
 
-      container.html("");
-      container.append("h3").text(humanizeTitle(containerId));
+        container.html("");
+        container.append("h3").text(humanizeTitle(containerId));
 
-      const svg = container.append("svg")
-        .attr("width", width)
-        .attr("height", height)
-        .append("g")
-        .attr("transform", `translate(${width / 2}, ${height / 2})`);
+        const svg = container.append("svg")
+          .attr("width", width)
+          .attr("height", height)
+          .append("g")
+          .attr("transform", `translate(${width / 2}, ${height / 2})`);
 
-      const tooltip = container.append("div")
-        .attr("class", "tooltip");
+        const tooltip = container.append("div")
+          .attr("class", "tooltip");
 
-      const pie = d3.pie().value(1).sort(null);
+        const pie = d3.pie().value(1).sort(null);
 
-      const arcInner = d3.arc()
-        .innerRadius(d => baselineRadius - ringWidth * (d.data.value / 100))
-        .outerRadius(baselineRadius);
+        const arcInner = d3.arc()
+          .innerRadius(d => baselineRadius - ringWidth * (d.data.value / 100))
+          .outerRadius(baselineRadius);
 
-      const arcOuter = d3.arc()
-        .innerRadius(baselineRadius)
-        .outerRadius(d => baselineRadius + ringWidth * (d.data.value / 100));
+        const arcOuter = d3.arc()
+          .innerRadius(baselineRadius)
+          .outerRadius(d => baselineRadius + ringWidth * (d.data.value / 100));
 
-      const labelArcInner = d3.arc()
-        .innerRadius(baselineRadius - ringWidth - 10)
-        .outerRadius(baselineRadius - ringWidth - 10);
+        const labelArcInner = d3.arc()
+          .innerRadius(baselineRadius - ringWidth - 10)
+          .outerRadius(baselineRadius - ringWidth - 10);
 
-      const labelArcOuter = d3.arc()
-        .innerRadius(baselineRadius + ringWidth + 10)
-        .outerRadius(baselineRadius + ringWidth + 10);
+        const labelArcOuter = d3.arc()
+          .innerRadius(baselineRadius + ringWidth + 10)
+          .outerRadius(baselineRadius + ringWidth + 10);
 
-		function showInfo(useInner, d) {
-			let content = "";
-			if (useInner) {
-			   content = `
-				<h2>${info[0].opposite}</h2>
-				<p><img width = "320" height = "320" src = "${info[0].oppositeImg}"><br>
-				<p>${info[0].oppositeDescription}<br>
-				<p><strong>${d.data.name}</strong><br>
-				Value: ${d.data.value}%<br>
-				<em>${d.data.text}</em></p>
-				<p><strong>People/Projects/Organizations:</strong><br>${d.data.related || "(no info available yet)"}</p>
-			  `;
-			} else {
-			  content = `
-				<h2>${info[0].facet}</h2>
-				<p><img width = "320" height = "320" src = "${info[0].facetImg}"><br>
-				<p>${info[0].facetDescription}<br>
-				<p><strong>${d.data.name}</strong><br>
-				Value: ${d.data.value}%<br>
-				<em>${d.data.text}</em></p>
-				<p><strong>People/Projects/Organizations:</strong><br>${d.data.related || "(no info available yet)"}</p>
-			  `;
-			}
-		  document.getElementById("infoContent").innerHTML = content;
-		}
+      function showInfo(useInner, d, people, projects, organizations) {
+        let content = "";
+        if (useInner) {
 
-      svg.selectAll(".arc-inner")
-        .data(pie(innerRing))
-        .enter().append("g")
-        .attr("class", "arc-inner")
-        .append("path")
-        .attr("d", arcInner)
-        .attr("fill", d => d3.interpolateGreens(d.data.value / 100))
-        .attr("stroke", "#fff")
-//        .on("mouseover", function (event, d) {
-//          tooltip.transition().style("opacity", 1);
-//          tooltip.html(`<strong>${d.data.name}</strong><br>Value: ${d.data.value}%<br>${d.data.text}`);
-//        })
-//        .on("mousemove", function(event) {
-//          tooltip.style("left", (event.pageX + 10) + "px").style("top", (event.pageY - 20) + "px");
-//        })
-//        .on("mouseout", function () {
-//          tooltip.transition().style("opacity", 0);
-//        })
-        .on("click", function (event, d) {
-          showInfo(true, d);
+          content += `
+          <h2>${info[0].opposite}</h2>
+          <p><img width = "320" height = "320" src = "${info[0].oppositeImg}"><br>
+          <p>${info[0].oppositeDescription}<br>
+          `;
+        } else {
+
+          content += `
+          <h2>${info[0].facet}</h2>
+          <p><img width = "320" height = "320" src = "${info[0].facetImg}"><br>
+          <p>${info[0].facetDescription}<br>
+          `;
+        }
+
+        content += `
+        <p><strong>${d.data.name}</strong><br>
+        Value: ${d.data.value}%<br>
+        <em>${d.data.text}</em></p>
+        `;
+        
+        content += `        
+        <p><strong>People/Projects/Organizations:</strong><br>`;
+          
+      if ((d.data.relatedPeople || []).length > 0) {          
+        content += `<h3>Related People</h3><ul>`;        
+
+        d.data.relatedPeople.forEach(personId => {
+          const person = people.find(p => p.id === personId);
+          if (person) {
+              content += `
+              <li>
+                <strong>${person.name}</strong><br>
+                ${person.description}<br>
+                <a href="${person.url}" target="_blank">Learn More</a><br>
+                Location: [${person.location.lat}, ${person.location.lng}]
+              </li>
+            `;
+          }
         });
 
-	// Draw inner labels
-	const innerLabels = svg.selectAll(".label-inner")
-	  .data(pie(innerRing))
-	  .enter().append("text")
-	  .attr("class", "label")
-	  .attr("transform", d => `translate(${labelArcInner.centroid(d)})`)
-	  .attr("dy", "0.35em")
-	  .attr("y", d => labelArcInner.centroid(d)[1])  // Set initial y position
-	  .text(d => d.data.name);
-	  
-      svg.selectAll(".arc-outer")
-        .data(pie(outerRing))
-        .enter().append("g")
-        .attr("class", "arc-outer")
-        .append("path")
-        .attr("d", arcOuter)
-        .attr("fill", d => d3.interpolateReds(d.data.value / 100))
-        .attr("stroke", "#fff")
-//        .on("mouseover", function (event, d) {
-//          tooltip.transition().style("opacity", 1);
-//          tooltip.html(`<strong>${d.data.name}</strong><br>Value: ${d.data.value}%<br>${d.data.text}`);
-//        })
-//        .on("mousemove", function(event) {
-//          tooltip.style("left", (event.pageX + 10) + "px").style("top", (event.pageY - 20) + "px");
-//        })
-//        .on("mouseout", function () {
-//          tooltip.transition().style("opacity", 0);
-//        })
-        .on("click", function (event, d) {
-          showInfo(false, d);
+        content += `</ul>`;          
+      } 
+      
+      if ((d.data.relatedProjects || []).length > 0) {          
+        content += `<h3>Related Projects</h3><ul>`;        
+
+        d.data.relatedProjects.forEach(projectId => {
+          const project = projects.find(p => p.id === projectId);
+          if (project) {
+              content += `
+              <li>
+                <strong>${project.name}</strong><br>
+                ${project.description}<br>
+                <a href="${project.url}" target="_blank">Learn More</a><br>
+                Location: [${project.location.lat}, ${project.location.lng}]
+              </li>
+            `;
+          }
         });
 
-      svg.selectAll(".label-outer")
-        .data(pie(outerRing))
-        .enter().append("text")
-        .attr("class", "label")
-        .attr("transform", d => `translate(${labelArcOuter.centroid(d)})`)
-        .attr("dy", "0.35em")
-        .text(d => d.data.name);
-		
-	// Draw outer labels
-	const outerLabels = svg.selectAll(".label-outer")
-	  .data(pie(outerRing))
-	  .enter().append("text")
-	  .attr("class", "label")
-	  .attr("transform", d => `translate(${labelArcOuter.centroid(d)})`)
-	  .attr("dy", "0.35em")
-	  .attr("y", d => labelArcOuter.centroid(d)[1])  // Set initial y position
-	  .text(d => d.data.name);
+        content += `</ul>`;          
+      }
 
-	// Combine both inner and outer labels for overlap adjustment
-	const allLabels = innerLabels.merge(outerLabels);
+      if ((d.data.relatedOrganizations || []).length > 0) {          
+        content += `<h3>Related Organizations</h3><ul>`;        
 
-	// Adjust label positions to prevent overlap
-	adjustLabelPositions(allLabels, 18);		
-    }
+        d.data.relatedOrganizations.forEach(organizationId => {
+          const organization = organizations.find(p => p.id === organizationId);
+          if (organization) {
+              content += `
+              <li>
+                <strong>${organization.name}</strong><br>
+                ${organization.description}<br>
+                <a href="${organization.url}" target="_blank">Learn More</a><br>
+                Location: [${organization.location.lat}, ${organization.location.lng}]
+              </li>
+            `;
+          }
+        });
 
-// === Main Data (Extinction Edge + Resilient Renaissance) ===
+        content += `</ul>`;          
+      }
 
-drawDonutChart("extinctionEdge",	extinctionEdge.info,	extinctionEdge.inner, 	extinctionEdge.outer);
-drawDonutChart("fragileWeb", 		fragileWeb.info,		fragileWeb.inner, 		fragileWeb.outer);
-drawDonutChart("truthTornado", 		truthTornado.info,		truthTornado.inner, 	truthTornado.outer);
-drawDonutChart("soulSplit", 		soulSplit.info,			soulSplit.inner, 		soulSplit.outer);
-drawDonutChart("earthErosion", 		earthErosion.info,		earthErosion.inner, 	earthErosion.outer);
-drawDonutChart("powerPyramid", 		powerPyramid.info,		powerPyramid.inner, 	powerPyramid.outer);
-drawDonutChart("techTsunami", 		techTsunami.info,		techTsunami.inner, 		techTsunami.outer);
-drawDonutChart("leadershipLapse", 	leadershipLapse.info,		leadershipLapse.inner, 	leadershipLapse.outer);
+      else {
+        content += `        
+          ${d.data.related || "(no info available yet)"}</p>
+        `;
+      }  
+        document.getElementById("infoContent").innerHTML = content;
+      }
 
-</script>
+        svg.selectAll(".arc-inner")
+          .data(pie(innerRing))
+          .enter().append("g")
+          .attr("class", "arc-inner")
+          .append("path")
+          .attr("d", arcInner)
+          .attr("fill", d => d3.interpolateGreens(d.data.value / 100))
+          .attr("stroke", "#fff")
+  //        .on("mouseover", function (event, d) {
+  //          tooltip.transition().style("opacity", 1);
+  //          tooltip.html(`<strong>${d.data.name}</strong><br>Value: ${d.data.value}%<br>${d.data.text}`);
+  //        })
+  //        .on("mousemove", function(event) {
+  //          tooltip.style("left", (event.pageX + 10) + "px").style("top", (event.pageY - 20) + "px");
+  //        })
+  //        .on("mouseout", function () {
+  //          tooltip.transition().style("opacity", 0);
+  //        })
+          .on("click", function (event, d) {
+            showInfo(true, d, people, projects, organizations);
+          });
 
-</body>
-</html>
+    // Draw inner labels
+    const innerLabels = svg.selectAll(".label-inner")
+      .data(pie(innerRing))
+      .enter().append("text")
+      .attr("class", "label")
+      .attr("transform", d => `translate(${labelArcInner.centroid(d)})`)
+      .attr("dy", "0.35em")
+      .attr("y", d => labelArcInner.centroid(d)[1])  // Set initial y position
+      .text(d => d.data.name);
+      
+        svg.selectAll(".arc-outer")
+          .data(pie(outerRing))
+          .enter().append("g")
+          .attr("class", "arc-outer")
+          .append("path")
+          .attr("d", arcOuter)
+          .attr("fill", d => d3.interpolateReds(d.data.value / 100))
+          .attr("stroke", "#fff")
+  //        .on("mouseover", function (event, d) {
+  //          tooltip.transition().style("opacity", 1);
+  //          tooltip.html(`<strong>${d.data.name}</strong><br>Value: ${d.data.value}%<br>${d.data.text}`);
+  //        })
+  //        .on("mousemove", function(event) {
+  //          tooltip.style("left", (event.pageX + 10) + "px").style("top", (event.pageY - 20) + "px");
+  //        })
+  //        .on("mouseout", function () {
+  //          tooltip.transition().style("opacity", 0);
+  //        })
+          .on("click", function (event, d) {
+            showInfo(false, d, people, projects, organizations);
+          });
+
+        svg.selectAll(".label-outer")
+          .data(pie(outerRing))
+          .enter().append("text")
+          .attr("class", "label")
+          .attr("transform", d => `translate(${labelArcOuter.centroid(d)})`)
+          .attr("dy", "0.35em")
+          .text(d => d.data.name);
+      
+    // Draw outer labels
+    const outerLabels = svg.selectAll(".label-outer")
+      .data(pie(outerRing))
+      .enter().append("text")
+      .attr("class", "label")
+      .attr("transform", d => `translate(${labelArcOuter.centroid(d)})`)
+      .attr("dy", "0.35em")
+      .attr("y", d => labelArcOuter.centroid(d)[1])  // Set initial y position
+      .text(d => d.data.name);
+
+    // Combine both inner and outer labels for overlap adjustment
+    const allLabels = innerLabels.merge(outerLabels);
+
+    // Adjust label positions to prevent overlap
+    adjustLabelPositions(allLabels, 18);		
+      }
+
+  // === Main Data (Extinction Edge + Resilient Renaissance) ===
+  drawDonutChart("extinctionEdge",	extinctionEdge.info,	extinctionEdge.inner, 	extinctionEdge.outer, extinctionEdge.people, extinctionEdge.projects, extinctionEdge.organizations);
+  drawDonutChart("fragileWeb", 		fragileWeb.info,		fragileWeb.inner, 		fragileWeb.outer, fragileWeb.people, fragileWeb.projects, fragileWeb.organizations);
+  drawDonutChart("truthTornado", 		truthTornado.info,		truthTornado.inner, 	truthTornado.outer, truthTornado.people, truthTornado.projects, truthTornado.organizations);
+  drawDonutChart("soulSplit", 		soulSplit.info,			soulSplit.inner, 		soulSplit.outer, soulSplit.people, soulSplit.projects, soulSplit.organizations);
+  drawDonutChart("earthErosion", 		earthErosion.info,		earthErosion.inner, 	earthErosion.outer, earthErosion.people, earthErosion.projects, earthErosion.organizations);
+  drawDonutChart("powerPyramid", 		powerPyramid.info,		powerPyramid.inner, 	powerPyramid.outer, powerPyramid.people, powerPyramid.projects, powerPyramid.organizations);
+  drawDonutChart("techTsunami", 		techTsunami.info,		techTsunami.inner, 		techTsunami.outer, techTsunami.people, techTsunami.projects, techTsunami.organizations);
+  drawDonutChart("leadershipLapse", 	leadershipLapse.info,		leadershipLapse.inner, 	leadershipLapse.outer, leadershipLapse.people, leadershipLapse.projects, leadershipLapse.organizations);
+
+  </script>
+
+  </body>
+  </html>
